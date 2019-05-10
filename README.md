@@ -6,7 +6,7 @@ O objetivo deste trabalho é que o estudante aplique os conceitos de threads, ex
 
 O jogo consiste de um tabuleiro 11 X 11 casas (posições). Nesse tabuleiro, inicialmente são distribuídos  cinco tokens (fichas) aleatoriamente em qualquer uma das 121 casas. Além dos tokens, há um cursor posicionado inicialmente no meio do tabuleiro, conforme a figura abaixo:
 
-![alt text](https://github.com/SadiJr/Trabalho-01-SO/tabuleiro.png)
+![alt text](https://github.com/SadiJr/Trabalho-01-SO/blob/master/tabuleiro.png)
 
 Após disparado o jogo, os tokens movimentam-se simultaneamente para qualquer posição do tabuleiro. O objetivo do jogo é que o jogador elimine todos os tokens dentro de um tempo máximo t. Para eliminar um token, o jogador tem que posicionar  o cursor na casa na qual o token encontra-se. 
 
