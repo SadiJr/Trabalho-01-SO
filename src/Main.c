@@ -2,232 +2,97 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
-#include <unistd.h>
 
-#define MAX_THREAD 5
-#define LINES 5
-#define COLLUMNS 5
-#define EMPTY     ' '
-#define CURSOR_PAIR   1
-#define TOKEN_PAIR    2
-#define EMPTY_PAIR    3
-#define TRUE 1
-#define FALSE 0
+#define LINES 11
+#define COLLUMNS 11
+#define MAX_THREADS 6
 
-//Assinaturas de métodos
-void init_threads_and_cursor();
-void init_table(void);
-void verify_killed_ball();
+void create_window();
+void refresh_window();
 void create_threads();
-void *move_thread(int index);
-void create_timer(void);
-void refresh_table(void);
+void move_threads();
+void check_time();
 
-
-//Estrutura de uma token e do cursor.
-typedef struct ball {
-    int x;
-    int y;
-    bool alive;
-} ball;
-
-
-ball cursor;
-ball balls[MAX_THREAD];
-bool time_out, winner;
-int max_time = 60;
-int speed = 2;
-int killed = 0;
-
-//Mutexs
-int table[LINES][COLLUMNS];;
-pthread_mutex_t mutex;
-int main() {
-    int key;
-    srand(time(NULL));
-
-    initscr();
-    keypad(stdscr, TRUE);
-    cbreak();
-    noecho();
-
-    /* inicializa colors */
-
-    if (has_colors() == FALSE) {
-        endwin();
-        printf("Seu terminal nao suporta cor\n");
-        exit(1);
-    }
-
-    start_color();
+void print() {
+    int count;
+	int y = 5, x = 5, w = 4, h = 2;
+    mvprintw(0, 0, "Escolha uma dificuldade:");
+    mvprintw(1, 0, "(1) Facil");
+    mvprintw(2, 0, "(2) Medio");
+    mvprintw(3, 0, "(3) Dificil");
+	board(stdscr, y, x, 11, 11, w, h);
+	for(count = 1; count <= 11; ++count)
+	{	int tempy = y + (count - 1) * h + h / 2;
+		int tempx = x + (11 - 1) * w + w / 2;
+		mvaddch(tempy, tempx, ' ');
+	}
+	refresh();
+	mvprintw(30, 0, "(q) Sair");
+    char choice;
     
-    /* inicializa pares caracter-fundo do caracter */
+    while(1) {
+        choice = getch();
 
-    pthread_mutex_init(&mutex, NULL);
-
-    init_pair(CURSOR_PAIR, COLOR_YELLOW, COLOR_YELLOW);
-    init_pair(TOKEN_PAIR, COLOR_RED, COLOR_RED);
-    init_pair(EMPTY_PAIR, COLOR_BLUE, COLOR_BLUE);
-    clear();
-    init_table();
-    init_threads_and_cursor();
-    create_threads();
-    do {   
-        key = getch();
-
-        switch (key) {   
-            case KEY_UP:
-            case 'w':
-            case 'W':
-            if ((cursor.y > 0)) {
-                cursor.y = cursor.y - 1;
-            }
-            break;
-
-            case KEY_DOWN:
-            case 's':
-            case 'S':
-            if ((cursor.y < LINES - 1)) {
-                cursor.y = cursor.y + 1;
-            }
-            break;
-
-            case KEY_LEFT:
-            case 'a':
-            case 'A':
-            if ((cursor.x > 0)) {
-                cursor.x = cursor.x - 1;
-            }
-            break;
+        switch (choice) {
+        case '1':
             
-            case KEY_RIGHT:
-            case 'd':
-            case 'D':
-            if ((cursor.x < COLS - 1)) {
-                cursor.x = cursor.x + 1;
-            }
+            break;
+        
+        case '2':
+            break;
+        
+        case '3':
+            break;
+        
+        case 'q':
+        case 'Q':
+            endwin();
+            exit(0);
+            break;
+        default:
             break;
         }
-        verify_killed_ball();
-        refresh_table();
-    }while ((key != 'q') && (key != 'Q') || !time_out || !winner);
+    }
+    clear();
+}
+
+void board(WINDOW *win, int starty, int startx, int lines, int cols, 
+	   int tile_width, int tile_height)
+{	int endy, endx, i, j;
+	
+	endy = starty + lines * tile_height;
+	endx = startx + cols  * tile_width;
+	
+	for(j = starty; j <= endy; j += tile_height)
+		for(i = startx; i <= endx; ++i)
+			mvwaddch(win, j, i, ACS_HLINE);
+	for(i = startx; i <= endx; i += tile_width)
+		for(j = starty; j <= endy; ++j)
+			mvwaddch(win, j, i, ACS_VLINE);
+	mvwaddch(win, starty, startx, ACS_ULCORNER);
+	mvwaddch(win, endy, startx, ACS_LLCORNER);
+	mvwaddch(win, starty, endx, ACS_URCORNER);
+	mvwaddch(win, 	endy, endx, ACS_LRCORNER);
+	for(j = starty + tile_height; j <= endy - tile_height; j += tile_height)
+	{	mvwaddch(win, j, startx, ACS_LTEE);
+		mvwaddch(win, j, endx, ACS_RTEE);	
+		for(i = startx + tile_width; i <= endx - tile_width; i += tile_width)
+			mvwaddch(win, j, i, ACS_PLUS);
+	}
+	for(i = startx + tile_width; i <= endx - tile_width; i += tile_width)
+	{	mvwaddch(win, starty, i, ACS_TTEE);
+		mvwaddch(win, endy, i, ACS_BTEE);
+	}
+	wrefresh(win);
+}
+
+int main() {
+    initscr();
+	cbreak();
+	keypad(stdscr, TRUE);
+    noecho();
+    print();
+
     endwin();
-    pthread_mutex_destroy(&mutex);
-
-    if(time_out) {
-        printf("Voce perdeu! Nao conseguir matar as threads a tempo!");
-    } else if(winner) {
-        printf("Ce eh o bixao memo hein doido");
-    }
     exit(0);
-}
-
-void init_threads_and_cursor(void) {
-    pthread_mutex_lock(&mutex);
-    
-    table[6][6]<-0;
-    cursor.x = 6;
-    cursor.y = 6;
-
-    for(int i = 0; i < MAX_THREAD; i++) {
-        int x, y = 0;
-        do {
-            x = rand()%(COLLUMNS);
-            y = rand()%(LINES);
-        } while ((table[x][y] != -1) || ((x == cursor.x) && (y == cursor.y)));
-        balls[i].x = x;
-        balls[i].y = y;
-        balls[i].alive = TRUE;
-    }
-    pthread_mutex_unlock(&mutex);
-}
-
-
-void init_table(void) {
-    pthread_mutex_lock(&mutex);
-    for(int i = 0; i < LINES; i++) {
-        for (int j = 0; j < COLLUMNS; j++) {
-            table[i][j] = -1;
-        }
-    }
-    refresh();
-    pthread_mutex_unlock(&mutex);
-}
-
-void verify_killed_ball(void) {
-    pthread_mutex_lock(&mutex);
-    for(int i = 0; i < MAX_THREAD; i++) {
-        if(balls[i].x == cursor.x && balls[i].y == cursor.y) {
-            balls[i].alive = FALSE;
-            killed++;
-        }
-    }
-    if(killed == 5) {
-        winner = TRUE;
-    }
-    pthread_mutex_unlock(&mutex);
-}
-
-void create_threads() {
-    for(int i = 0; i < MAX_THREAD; i++) {
-        pthread_create(NULL, NULL, move_thread(i), (void *) &balls[i]);
-    }
-
-    for (int i = 0; i < MAX_THREAD; i++) 
-        pthread_join(&balls[i], NULL);
-}
-
-void *move_thread(int index) {
-    while(!winner || !time_out || balls[index].alive) {
-        int x, y = 0;
-        pthread_mutex_lock(&mutex);
-        do {
-            x = rand()%(COLLUMNS);
-            y = rand()%(LINES);
-        } while ((table[x][y] != -1) || ((x == cursor.x) && (y == cursor.y)));
-    
-        table[balls[index].x][balls[index].y] = -1;
-        table[x][y]=index;
-        balls[index].x = x;
-        balls[index].y = y;
-        refresh_table();
-        pthread_mutex_unlock(&mutex);
-        sleep(speed);
-    }
-}
-
-void create_timer(void) {
-    for(int i = 0; i < max_time; i++) {
-        sleep(1);
-    }
-    time_out = TRUE;
-}
-
-
-void refresh_table(void) {
-    int x, y, i;
-    for (x = 0; x < COLLUMNS; x++) {
-        for (y = 0; y < LINES; y++){
-            attron(COLOR_PAIR(EMPTY_PAIR));
-            mvaddch(y, x, EMPTY);
-            attroff(COLOR_PAIR(EMPTY_PAIR));
-        }
-    }
-
-    /* poe os tokens no tabuleiro */
-
-    for (i = 0; i < MAX_THREAD; i++) {
-        if(balls[i].alive) {
-            attron(COLOR_PAIR(TOKEN_PAIR));
-            mvaddch(balls[i].y, balls[i].x, EMPTY);
-            attroff(COLOR_PAIR(TOKEN_PAIR));
-        }
-    }
-    /* poe o cursor no tabuleiro */
-    move(y, x);
-    refresh();
-    attron(COLOR_PAIR(CURSOR_PAIR));
-    mvaddch(cursor.y, cursor.x, EMPTY);
-    attroff(COLOR_PAIR(CURSOR_PAIR));
 }
