@@ -132,13 +132,15 @@ void move_cursor() {
         case 'w':
         case 'W':
             if ((cursor.y > 0)) {
-            cursor.y = cursor.y - 1;
+                refresh_table(cursor.x, cursor.y, cursor.x, cursor.y -1, false);
+                cursor.y = cursor.y - 1;
             }
             break;
         case KEY_DOWN:
         case 's':
         case 'S':
             if ((cursor.y < LINES - 1)) {
+                refresh_table(cursor.x, cursor.y, cursor.x, cursor.y +1, false);
             cursor.y = cursor.y + 1;
             }
             break;
@@ -146,6 +148,7 @@ void move_cursor() {
         case 'a':
         case 'A':
             if ((cursor.x > 0)) {
+                refresh_table(cursor.x, cursor.y, cursor.x -1, cursor.y, false);
             cursor.x = cursor.x - 1;
             }
             break;
@@ -153,11 +156,25 @@ void move_cursor() {
         case 'd':
         case 'D':
             if ((cursor.x < COLS - 1)) {
-            cursor.x = cursor.x + 1;
+                refresh_table(cursor.x, cursor.y, cursor.x +1, cursor.y, false);
+                cursor.x = cursor.x + 1;
             }
             break;
         }
+        verify_killed_threads();
   }while ((key != 'q') && (key != 'Q'));
+}
+
+void verify_killed_threads() {
+    for(int i = 0; i < MAX_THREADS; i++) {
+        if(positions[i].x == cursor.x && positions[i].y == cursor.y) {
+            killed_threads++;
+            positions[i].alive = false;
+            if(killed_threads == 5) {
+                winner = true;
+            }
+        }
+    }
 }
 
 void init_table() {
@@ -219,6 +236,7 @@ void* move_thread(int id) {
         refresh_table(old_x, old_y, new_x, new_y, true);
         pthread_mutex_unlock(&mutex);
     }
+    pthread_exit(0);
 }
 
 bool verify_free_position(int new_x, int new_y) {
