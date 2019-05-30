@@ -11,8 +11,18 @@
 #define THREAD  2
 #define BLANK   3
 
-void start_game();
 void main_menu();
+void start_game();
+void init_positions();
+void move_cursor();
+void verify_killed_threads();
+void init_table();
+void refresh_table(int old_x, int old_y, int new_x, int new_y, bool thread);
+void clear_line(int x);
+void* create_timer();
+void move_thread(void* id);
+bool verify_free_position(int new_x, int new_y);
+void create_cursor();
 
 bool winner, time_out, game_running;
 unsigned int max_time;
@@ -31,6 +41,7 @@ ball cursor;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_t threads[MAX_THREADS];
 pthread_t cron;
+pthread_t c;
 
 int main() {
     srand(time(NULL));
@@ -48,7 +59,7 @@ int main() {
     start_color();
     init_pair(CURSOR, COLOR_YELLOW, COLOR_YELLOW);
     init_pair(THREAD, COLOR_RED, COLOR_RED);
-    init_pair(BLANK, COLOR_BLACK, COLOR_BLACK);
+    init_pair(BLANK, COLOR_BLUE, COLOR_BLUE);
 
     main_menu();
     endwin();
@@ -101,20 +112,21 @@ void start_game() {
 
     init_positions();
     init_table();
-    init_cursor();
+    create_cursor();
 
+    
+    pthread_create(&c, NULL, (void *)move_cursor, NULL);
+    
     for(int i = 0; i < MAX_THREADS; i++) {
-        pthread_create(&threads[i], NULL, move_thread(i), NULL);
+        pthread_create(&threads[i], NULL, move_thread, (void *)i);
     }
-
     pthread_create(&cron, NULL, create_timer(), NULL);
-    pthread_join(&cron, NULL);
 
+    // pthread_join(&c, NULL);
+    pthread_join(&cron, NULL);
     for(int i = 0; i < MAX_THREADS; i++) {
         pthread_join(&threads[i], NULL);
     }
-
-    move_cursor();
 }
 
 void init_positions() {
@@ -155,7 +167,7 @@ void move_cursor() {
         case KEY_RIGHT:
         case 'd':
         case 'D':
-            if ((cursor.x < COLS - 1)) {
+            if ((cursor.x < COLLUMNS - 1)) {
                 refresh_table(cursor.x, cursor.y, cursor.x +1, cursor.y, false);
                 cursor.x = cursor.x + 1;
             }
@@ -194,15 +206,15 @@ void refresh_table(int old_x, int old_y, int new_x, int new_y, bool thread) {
 
     if(thread) {
         attron(COLOR_PAIR(THREAD));
-        mvaddch(new_x, new_y, BLANK);
+        mvaddch(new_x, new_y, THREAD);
         attroff(COLOR_PAIR(THREAD));
     } else {
-        move(new_y, new_x);
-        refresh();
+        move(new_x, new_y);
         attron(COLOR_PAIR(CURSOR));
-        mvaddch(new_y, new_x, BLANK);
+        mvaddch(new_x, new_y, BLANK);
         attroff(COLOR_PAIR(CURSOR));
     }
+    refresh();
 }
 
 void clear_line(int x) {
@@ -221,7 +233,8 @@ void* create_timer() {
     game_running = false;
 }
 
-void* move_thread(int id) {
+void move_thread(void* arg) {
+    int id = (int) arg;
     while (game_running && !time_out && !winner && positions[id].alive) {
         pthread_mutex_lock(&mutex);
         int new_x, new_y;
@@ -235,6 +248,7 @@ void* move_thread(int id) {
         positions[id].y = new_y;
         refresh_table(old_x, old_y, new_x, new_y, true);
         pthread_mutex_unlock(&mutex);
+        sleep(speed);
     }
     pthread_exit(0);
 }
