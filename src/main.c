@@ -28,7 +28,7 @@ void create_cursor();
 bool winner, time_out, game_running;
 unsigned int max_time;
 unsigned long speed;
-int killed_threads = 0;
+int killed_threads;
 
 typedef struct Ball {
     int x;
@@ -108,6 +108,7 @@ void start_game() {
     game_running = true;
     winner = false;
     time_out = false;
+    killed_threads = 0;
     clear_line(0); clear_line(1);
     clear_line(2); clear_line(3);
     clear_line(4);
@@ -274,6 +275,7 @@ void* create_timer() {
     time_out = true;
     game_running = false;
     pthread_cancel(cu);
+    refresh();
     clear();
     main_menu();
 }
