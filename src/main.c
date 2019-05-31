@@ -20,15 +20,17 @@ void verify_killed_threads();
 void init_table();
 void refresh_table();
 void clear_line(int x);
-void* create_timer();
+void *create_timer();
 void *move_thread(void *id);
 bool verify_free_position(int new_x, int new_y);
 void create_cursor();
 
 bool winner, time_out, game_running;
+bool first_game = true;
 unsigned int max_time;
 unsigned long speed;
 int killed_threads;
+int record;
 
 typedef struct Ball {
     int x;
@@ -42,6 +44,7 @@ ball cursor;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_t threads[MAX_THREADS];
 pthread_t cron;
+//TODO renomear esse caralho,
 pthread_t cu;
 
 int main() {
@@ -68,7 +71,39 @@ int main() {
 }
 
 void main_menu() {
-    pthread_mutex_unlock(&mutex);
+    if(!first_game) {
+        pthread_mutex_unlock(&mutex);
+        clear();
+        refresh();
+
+        if(winner) {
+            mvprintw(0, 0, "Parabens, voce ganhou!");
+            mvprintw(1, 0, "Matou todas as threads em %i segundos!", record);
+        } else if (time_out) {
+            mvprintw(0, 0, "Parabens, voce perdeu!");
+            mvprintw(1, 0, "Matou ao todo %i threads em %i segundos!", killed_threads, max_time);
+        }
+
+        mvprintw(3, 0, "Deseja iniciar um novo jogo?");
+        mvprintw(4, 0, "(S/s) Sim");
+        mvprintw(5, 0, "(N/n) Nao");
+        switch (getch()) {
+            case 'S':
+            case 's':
+                break;
+            
+            case 'N':
+            case 'n':
+                pthread_mutex_destroy(&mutex);
+                endwin();
+                exit(0);
+                break;
+            
+            default:
+                main_menu();
+                break;
+        }
+    }
     clear();
     mvprintw(0, 0, "Escolha uma dificuldade:");
     mvprintw(1, 0, "(1) Facil");
@@ -151,23 +186,20 @@ void *move_cursor() {
         case 'W':
             if ((cursor.y > 0)) {
                 cursor.y = cursor.y - 1;
-                refresh_table();
             }
             break;
         case KEY_DOWN:
         case 's':
         case 'S':
             if ((cursor.y < LINES - 1)) {
-            cursor.y = cursor.y + 1;
-                refresh_table();
+                cursor.y = cursor.y + 1;
             }
             break;
         case KEY_LEFT:
         case 'a':
         case 'A':
             if ((cursor.x > 0)) {
-            cursor.x = cursor.x - 1;
-                refresh_table();
+                cursor.x = cursor.x - 1;
             }
             break;
         case KEY_RIGHT:
@@ -175,11 +207,11 @@ void *move_cursor() {
         case 'D':
             if ((cursor.x < COLLUMNS - 1)) {
                 cursor.x = cursor.x + 1;
-                refresh_table();
             }
             break;
         }
         verify_killed_threads();
+        refresh_table();
         pthread_mutex_unlock(&mutex);
   }while ((key != 'q') && (key != 'Q'));
   game_running = false;
@@ -192,20 +224,21 @@ void verify_killed_threads() {
         if(positions[i].alive && positions[i].x == cursor.x && positions[i].y == cursor.y) {
             killed_threads++;
             positions[i].alive = false;
-            mvprintw(20, 0, "mATANDO THREAD %i", i);
+            // mvprintw(20, 0, "mATANDO THREAD %i", i);
             if(killed_threads == 5) {
-                mvprintw(20, 0, "Matou ao todo %i threads", killed_threads);
-                winner = true;
+                // mvprintw(20, 0, "Matou ao todo %i threads", killed_threads);
                 pthread_cancel(cron);
-                clear();
+                first_game = false;
+                winner = true;
                 main_menu();
-                pthread_cancel(cu);
+                pthread_exit(0);
             }
         }
     }
 }
 
 void init_table() {
+    clear();
     for(int i = 0; i < LINES; i++) {
         for(int j = 0; j < COLLUMNS; j++) {
             attron(COLOR_PAIR(BLANK));
@@ -213,6 +246,7 @@ void init_table() {
             attroff(COLOR_PAIR(BLANK));
         }
     }
+    refresh();
 }
 
 void refresh_table() {
@@ -231,7 +265,6 @@ void refresh_table() {
     //     attroff(COLOR_PAIR(CURSOR));
     // }
     // refresh();
-
     int x, y, i;
 
     /* redesenha tabuleiro "limpo" */
@@ -266,19 +299,22 @@ void clear_line(int x) {
     clrtoeol();          // deleta a linha
 }
 
-void* create_timer() {
+void *create_timer() {
+    record = max_time;
     for(int i = 0; i <= max_time; i++) {
         clear_line(15); 
         mvprintw(15, 0, "Tempo restante: %i", max_time - i);
-        sleep(1);
         refresh();
+        record--;
+        sleep(1);
     }
+    first_game = false;
     time_out = true;
     game_running = false;
     pthread_cancel(cu);
     refresh();
-    clear();
     main_menu();
+    pthread_exit(0);
 }
 
 void *move_thread(void *arg) {
@@ -302,7 +338,7 @@ void *move_thread(void *arg) {
         pthread_mutex_unlock(&mutex);
         sleep(speed);
     }
-    mvprintw(20, 0, "mATANDO THREAD %i", id);
+    // mvprintw(20, 0, "mATANDO THREAD %i", id);
     pthread_exit(0);
 }
 
