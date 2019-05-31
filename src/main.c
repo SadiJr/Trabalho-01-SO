@@ -68,6 +68,7 @@ int main() {
 }
 
 void main_menu() {
+    pthread_mutex_unlock(&mutex);
     clear();
     mvprintw(0, 0, "Escolha uma dificuldade:");
     mvprintw(1, 0, "(1) Facil");
@@ -143,7 +144,7 @@ void *move_cursor() {
     int key;
     do {
         key = getch();
-        // pthread_mutex_lock(&mutex);
+        pthread_mutex_lock(&mutex);
         switch (key) {
         case KEY_UP:
         case 'w':
@@ -179,7 +180,7 @@ void *move_cursor() {
             break;
         }
         verify_killed_threads();
-        // pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&mutex);
   }while ((key != 'q') && (key != 'Q'));
   game_running = false;
   pthread_cancel(cron);
