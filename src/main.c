@@ -44,8 +44,7 @@ ball cursor;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_t threads[MAX_THREADS];
 pthread_t cron;
-//TODO renomear esse caralho,
-pthread_t cu;
+pthread_t cursor_move;
 
 int main() {
     srand(time(NULL));
@@ -145,22 +144,22 @@ void start_game() {
     winner = false;
     time_out = false;
     killed_threads = 0;
-    clear_line(0); clear_line(1);
-    clear_line(2); clear_line(3);
-    clear_line(4);
+    // clear();
+    // clear_line(0); clear_line(1);
+    // clear_line(2); clear_line(3);
+    // clear_line(4);
 
     init_positions();
     init_table();
     create_cursor();
 
-    pthread_create(&cu, NULL, move_cursor, NULL);
-    
+    pthread_create(&cursor_move, NULL, move_cursor, NULL);
     for(int i = 0; i < MAX_THREADS; i++) {
         pthread_create(&threads[i], NULL, move_thread, (void *) (intptr_t)i);
     }
     pthread_create(&cron, NULL, create_timer, NULL);
 
-    pthread_join(cu, NULL);
+    pthread_join(cursor_move, NULL);
     pthread_join(cron, NULL);
     for(int i = 0; i < MAX_THREADS; i++) {
         pthread_join(threads[i], NULL);
@@ -180,43 +179,42 @@ void *move_cursor() {
     do {
         key = getch();
         pthread_mutex_lock(&mutex);
-        // int x = cursor.x;
-        // int y = cursor.y;
         
         switch (key) {
-        case KEY_UP:
-        case 'w':
-        case 'W':
-            if ((cursor.y > 0)) {
-                cursor.y = cursor.y - 1;
-            }
-            break;
-        case KEY_DOWN:
-        case 's':
-        case 'S':
-            if ((cursor.y < LINES - 1)) {
-                cursor.y = cursor.y + 1;
-            }
-            break;
-        case KEY_LEFT:
-        case 'a':
-        case 'A':
-            if ((cursor.x > 0)) {
-                cursor.x = cursor.x - 1;
-            }
-            break;
-        case KEY_RIGHT:
-        case 'd':
-        case 'D':
-            if ((cursor.x < COLLUMNS - 1)) {
-                cursor.x = cursor.x + 1;
-            }
-            break;
+            case KEY_UP:
+            case 'w':
+            case 'W':
+                if ((cursor.y > 0)) {
+                    cursor.y = cursor.y - 1;
+                }
+                break;
+            case KEY_DOWN:
+            case 's':
+            case 'S':
+                if ((cursor.y < LINES - 1)) {
+                    cursor.y = cursor.y + 1;
+                }
+                break;
+            case KEY_LEFT:
+            case 'a':
+            case 'A':
+                if ((cursor.x > 0)) {
+                    cursor.x = cursor.x - 1;
+                }
+                break;
+            case KEY_RIGHT:
+            case 'd':
+            case 'D':
+                if ((cursor.x < COLLUMNS - 1)) {
+                    cursor.x = cursor.x + 1;
+                }
+                break;
         }
         verify_killed_threads();
         refresh_table();
         pthread_mutex_unlock(&mutex);
-  }while ((key != 'q') && (key != 'Q'));
+  } while ((key != 'q') && (key != 'Q'));
+
   game_running = false;
   pthread_mutex_unlock(&mutex);
   pthread_cancel(cron);
@@ -228,9 +226,8 @@ void verify_killed_threads() {
         if(positions[i].alive && positions[i].x == cursor.x && positions[i].y == cursor.y) {
             killed_threads++;
             positions[i].alive = false;
-            // mvprintw(20, 0, "mATANDO THREAD %i", i);
+
             if(killed_threads == 5) {
-                // mvprintw(20, 0, "Matou ao todo %i threads", killed_threads);
                 pthread_cancel(cron);
                 first_game = false;
                 winner = true;
@@ -254,43 +251,14 @@ void init_table() {
 }
 
 void refresh_table() {
-    // attron(COLOR_PAIR(BLANK));
-    // mvaddch(old_x, old_y, ' ');
-    // attroff(COLOR_PAIR(BLANK));
-
-    // if(thread) {
-    //     attron(COLOR_PAIR(THREAD));
-    //     mvaddch(new_x, new_y, THREAD);
-    //     attroff(COLOR_PAIR(THREAD));
-    // } else {
-    //     move(new_x, new_y);
-    //     attron(COLOR_PAIR(CURSOR));
-    //     mvaddch(new_x, new_y, BLANK);
-    //     attroff(COLOR_PAIR(CURSOR));
-    // }
-    // refresh();
     int x, y, i;
 
-    /* redesenha tabuleiro "limpo" */
-    // attron(COLOR_PAIR(BLANK));
-    // mvaddch(y, x, ' ');
-    // attroff(COLOR_PAIR(BLANK));
-    
     for (x = 0; x < COLLUMNS; x++) 
         for (y = 0; y < LINES; y++){
         attron(COLOR_PAIR(BLANK));
         mvaddch(y, x, ' ');
         attroff(COLOR_PAIR(BLANK));
     }
-
-    /* poe os tokens no tabuleiro */
-    // if(i > -1) {
-    //     if(positions[i].alive) {
-    //         attron(COLOR_PAIR(THREAD));
-    //         mvaddch(positions[i].y, positions[i].x, ' ');
-    //         attroff(COLOR_PAIR(THREAD));
-    //     }
-    // }
 
     for (i = 0; i < MAX_THREADS; i++) {
         if(positions[i].alive) {
@@ -299,37 +267,34 @@ void refresh_table() {
             attroff(COLOR_PAIR(THREAD));
         }
     }
-    /* poe o cursor no tabuleiro */
 
     move(y, x);
     attron(COLOR_PAIR(CURSOR));
     mvaddch(cursor.y, cursor.x, ' ');
     attroff(COLOR_PAIR(CURSOR));
-
-    // mvprintw(15, 0, "Tempo restante: %i", record);
     refresh();
 }
 
 void clear_line(int x) {
-    move(x, 0);          // move o cursor pro começo da linha
-    clrtoeol();          // deleta a linha
+    move(x, 0);
+    clrtoeol();
 }
 
 void *create_timer() {
-    record = max_time;
+    record = 0;
     for(int i = 0; i <= max_time; i++) {
         clear_line(15); 
         pthread_mutex_lock(&mutex);
-        mvprintw(15, 0, "Tempo restante: %i", max_time - i);
+        mvprintw(15, 0, "Tempo restante: %i segundos", max_time - i);
         refresh();
         pthread_mutex_unlock(&mutex);
-        record--;
+        record++;
         sleep(1);
     }
     first_game = false;
     time_out = true;
     game_running = false;
-    pthread_cancel(cu);
+    pthread_cancel(cursor_move);
     refresh();
     main_menu();
     pthread_exit(0);
@@ -337,26 +302,22 @@ void *create_timer() {
 
 void *move_thread(void *arg) {
     int id = (intptr_t)arg;
-    // printf("Moving thread with id %i, and pid %i", id, pthread_self());
-    // printf("Bool variables: game_running %i, time-out %i, winner %i and alive %i", game_running, time_out, winner, positions[id].alive);
     while (game_running && !time_out && !winner && positions[id].alive) {
         pthread_mutex_lock(&mutex);
-        // printf("Mutex!");
+
         int new_x, new_y;
         do {
             new_x = rand() % LINES;
             new_y = rand() % COLLUMNS;
         } while(!verify_free_position(new_x, new_y));
-        // int old_x = positions[id].x;
-        // int old_y = positions[id].y;
+
         positions[id].x = new_x;
         positions[id].y = new_y;
-        // printf("Refreshing screen with values = %i %i %i %i", old_x, old_y, new_x, new_y);
+
         refresh_table();
         pthread_mutex_unlock(&mutex);
         sleep(speed);
     }
-    // mvprintw(20, 0, "mATANDO THREAD %i", id);
     pthread_exit(0);
 }
 
@@ -371,6 +332,6 @@ bool verify_free_position(int new_x, int new_y) {
 }
 
 void create_cursor() {
-    cursor.x = 6;
-    cursor.y = 6;
+    cursor.x = 5;
+    cursor.y = 5;
 }
