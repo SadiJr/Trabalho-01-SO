@@ -18,7 +18,7 @@ void init_positions();
 void *move_cursor();
 void verify_killed_threads();
 void init_table();
-void refresh_table(int x, int y, int i);
+void refresh_table();
 void clear_line(int x);
 void *create_timer();
 void *move_thread(void *id);
@@ -180,8 +180,8 @@ void *move_cursor() {
     do {
         key = getch();
         pthread_mutex_lock(&mutex);
-        int x = cursor.x;
-        int y = cursor.y;
+        // int x = cursor.x;
+        // int y = cursor.y;
         
         switch (key) {
         case KEY_UP:
@@ -214,10 +214,11 @@ void *move_cursor() {
             break;
         }
         verify_killed_threads();
-        refresh_table(x, y, -1);
+        refresh_table();
         pthread_mutex_unlock(&mutex);
   }while ((key != 'q') && (key != 'Q'));
   game_running = false;
+  pthread_mutex_unlock(&mutex);
   pthread_cancel(cron);
   pthread_exit(0);
 }
@@ -252,7 +253,7 @@ void init_table() {
     refresh();
 }
 
-void refresh_table(int x, int y, int i) {
+void refresh_table() {
     // attron(COLOR_PAIR(BLANK));
     // mvaddch(old_x, old_y, ' ');
     // attroff(COLOR_PAIR(BLANK));
@@ -268,42 +269,44 @@ void refresh_table(int x, int y, int i) {
     //     attroff(COLOR_PAIR(CURSOR));
     // }
     // refresh();
-    // int x, y, i;
+    int x, y, i;
 
     /* redesenha tabuleiro "limpo" */
-    attron(COLOR_PAIR(BLANK));
-    mvaddch(y, x, ' ');
-    attroff(COLOR_PAIR(BLANK));
+    // attron(COLOR_PAIR(BLANK));
+    // mvaddch(y, x, ' ');
+    // attroff(COLOR_PAIR(BLANK));
     
-    // for (x = 0; x < COLLUMNS; x++) 
-    //     for (y = 0; y < LINES; y++){
-    //     attron(COLOR_PAIR(BLANK));
-    //     mvaddch(y, x, ' ');
-    //     attroff(COLOR_PAIR(BLANK));
-    // }
-
-    /* poe os tokens no tabuleiro */
-    if(i > -1) {
-        if(positions[i].alive) {
-            attron(COLOR_PAIR(THREAD));
-            mvaddch(positions[i].y, positions[i].x, ' ');
-            attroff(COLOR_PAIR(THREAD));
-        }
+    for (x = 0; x < COLLUMNS; x++) 
+        for (y = 0; y < LINES; y++){
+        attron(COLOR_PAIR(BLANK));
+        mvaddch(y, x, ' ');
+        attroff(COLOR_PAIR(BLANK));
     }
 
-    // for (i = 0; i < MAX_THREADS; i++) {
+    /* poe os tokens no tabuleiro */
+    // if(i > -1) {
     //     if(positions[i].alive) {
     //         attron(COLOR_PAIR(THREAD));
     //         mvaddch(positions[i].y, positions[i].x, ' ');
     //         attroff(COLOR_PAIR(THREAD));
     //     }
     // }
+
+    for (i = 0; i < MAX_THREADS; i++) {
+        if(positions[i].alive) {
+            attron(COLOR_PAIR(THREAD));
+            mvaddch(positions[i].y, positions[i].x, ' ');
+            attroff(COLOR_PAIR(THREAD));
+        }
+    }
     /* poe o cursor no tabuleiro */
 
     move(y, x);
     attron(COLOR_PAIR(CURSOR));
     mvaddch(cursor.y, cursor.x, ' ');
     attroff(COLOR_PAIR(CURSOR));
+
+    // mvprintw(15, 0, "Tempo restante: %i", record);
     refresh();
 }
 
@@ -316,8 +319,10 @@ void *create_timer() {
     record = max_time;
     for(int i = 0; i <= max_time; i++) {
         clear_line(15); 
+        pthread_mutex_lock(&mutex);
         mvprintw(15, 0, "Tempo restante: %i", max_time - i);
         refresh();
+        pthread_mutex_unlock(&mutex);
         record--;
         sleep(1);
     }
@@ -342,12 +347,12 @@ void *move_thread(void *arg) {
             new_x = rand() % LINES;
             new_y = rand() % COLLUMNS;
         } while(!verify_free_position(new_x, new_y));
-        int old_x = positions[id].x;
-        int old_y = positions[id].y;
+        // int old_x = positions[id].x;
+        // int old_y = positions[id].y;
         positions[id].x = new_x;
         positions[id].y = new_y;
         // printf("Refreshing screen with values = %i %i %i %i", old_x, old_y, new_x, new_y);
-        refresh_table(old_x, old_y, id);
+        refresh_table();
         pthread_mutex_unlock(&mutex);
         sleep(speed);
     }
